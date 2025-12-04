@@ -16,7 +16,10 @@ const TelemetryHistorySchema = new Schema({
     extra: { type: Schema.Types.Mixed }
 });
 
-// Compound index for efficient history queries
-TelemetryHistorySchema.index({ vehicleId: 1, timestamp: -1 });
+
+TelemetryHistorySchema.index(
+    { timestamp: 1 },
+    { expireAfterSeconds: 8 * 24 * 60 * 60 }
+);
 
 export default model('TelemetryHistory', TelemetryHistorySchema);

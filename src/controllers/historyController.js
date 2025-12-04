@@ -27,8 +27,15 @@ export const getVehicleHistory = async (req, res) => {
             // Calculate based on days parameter
             end = new Date(); // Now
             start = new Date();
-            start.setDate(start.getDate() - parseInt(days));
-            start.setHours(0, 0, 0, 0); // Start of day
+
+            if (parseInt(days) === 0) {
+                // Today: from start of today to now
+                start.setHours(0, 0, 0, 0);
+            } else {
+                // Previous days: subtract days and set to start of that day
+                start.setDate(start.getDate() - parseInt(days));
+                start.setHours(0, 0, 0, 0);
+            }
         }
 
         // Query telemetry history data for this vehicle in the date range
@@ -76,8 +83,15 @@ export const getVehicleHistorySummary = async (req, res) => {
         // Calculate date range
         const end = new Date();
         const start = new Date();
-        start.setDate(start.getDate() - parseInt(days));
-        start.setHours(0, 0, 0, 0);
+
+        if (parseInt(days) === 0) {
+            // Today: from start of today to now
+            start.setHours(0, 0, 0, 0);
+        } else {
+            // Previous days: subtract days and set to start of that day
+            start.setDate(start.getDate() - parseInt(days));
+            start.setHours(0, 0, 0, 0);
+        }
 
         const history = await TelemetryHistory.find({
             vehicleId,
