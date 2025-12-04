@@ -5,6 +5,6 @@ const router = Router();
 
 router.post('/', createAlert);
 router.get('/', getAlerts);
-router.post('/ack/:id', acknowledgeAlert);
+router.patch('/:id/acknowledge', acknowledgeAlert);
 
 export default router;
