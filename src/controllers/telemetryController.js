@@ -1,8 +1,9 @@
 import Telemetry from '../models/Telemetry.js';
+import TelemetryHistory from '../models/TelemetryHistory.js';
 import Alert from '../models/Alert.js';
-import { getIo } from '../socket.js';
 import Vehicle from '../models/Vehicle.js';
-// POST /api/telemetry
+import { getIo } from '../socket.js';
+
 export const postTelemetry = async (req, res) => {
   try {
     const {
@@ -15,13 +16,28 @@ export const postTelemetry = async (req, res) => {
       timestamp,
       extra
     } = req.body;
-    console.log(req.body)
-    if (!vehicleId) return res.status(400).json({ error: 'vehicleId is required' });
 
-    // Check if vehicle is registered
-    const vehicle = await Vehicle.findOne({ vehicleId });
-    if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' });
+    if (!vehicleId)
+      return res.status(400).json({ error: "vehicleId is required" });
 
+    // -----------------------------------------
+    // 1️ CHECK OR CREATE VEHICLE
+    // -----------------------------------------
+    let vehicle = await Vehicle.findOne({ vehicleId });
+
+    if (!vehicle) {
+      vehicle = await Vehicle.create({
+        vehicleId,
+        name: `Vehicle ${vehicleId}`,
+        createdAt: new Date()
+      });
+
+      console.log(`🚗 New vehicle created: ${vehicleId}`);
+    }
+
+    // -----------------------------------------
+    // 2 CREATE OR UPDATE TELEMETRY (UPSERT)
+    // -----------------------------------------
     const telemetryData = {
       vehicleId,
       location,
@@ -33,73 +49,92 @@ export const postTelemetry = async (req, res) => {
       extra
     };
 
-    // INSERT new telemetry record (don't update - we want history!)
-    // This ensures every location update is saved for history tracking
-    const telemetry = await Telemetry.create(telemetryData);
+    const telemetry = await Telemetry.findOneAndUpdate(
+      { vehicleId },
+      telemetryData,
+      { new: true, upsert: true }  // update if exists, insert if not
+    );
 
-    console.log(`📍 Saved telemetry for ${vehicleId} at ${telemetry.location?.lat}, ${telemetry.location?.lng}`);
+    console.log(`📡 Telemetry updated for ${vehicleId}`);
 
-    // Emit Socket.IO events
+    // -----------------------------------------
+    // 3️ SAVE TO HISTORY (for tracking)
+    // -----------------------------------------
+    await TelemetryHistory.create(telemetryData);
+    console.log(`📚 History record saved for ${vehicleId}`);
+
+    // -----------------------------------------
+    // 4️ SEND SOCKET UPDATES
+    // -----------------------------------------
     try {
       const io = getIo();
       if (io) {
-        io.emit('vehicle:location', {
+        io.emit("vehicle:location", {
           vehicleId,
           location: telemetry.location,
           speed: telemetry.speed,
           timestamp: telemetry.timestamp
         });
-        io.emit('vehicle:telemetry', telemetry);
+
+        io.emit("vehicle:telemetry", telemetry);
       }
-    } catch (err) { }
+    } catch (e) { }
 
-    // Evaluate alerts
-    const alertsToCreate = [];
+    // -----------------------------------------
+    // 5️⃣ ALERT GENERATION
+    // -----------------------------------------
+    const alerts = [];
 
-    if (typeof speed === 'number' && speed > 80) {
-      alertsToCreate.push({
+    if (typeof speed === "number" && speed > 80) {
+      alerts.push({
         vehicleId,
-        type: 'overspeed',
+        type: "overspeed",
         message: `Overspeed detected: ${speed} km/h`,
-        level: 'high'
+        level: "high",
+        createdAt: new Date()
       });
     }
 
-    if (typeof temperature === 'number' && temperature > 80) {
-      alertsToCreate.push({
+    if (typeof temperature === "number" && temperature > 80) {
+      alerts.push({
         vehicleId,
-        type: 'high_temperature',
-        message: `High temperature detected: ${temperature} C`,
-        level: 'high'
+        type: "high_temperature",
+        message: `High temperature detected: ${temperature}°C`,
+        level: "high",
+        createdAt: new Date()
       });
     }
 
-    if (typeof fuel === 'number' && fuel < 15) {
-      alertsToCreate.push({
+    if (typeof fuel === "number" && fuel < 15) {
+      alerts.push({
         vehicleId,
-        type: 'low_fuel',
+        type: "low_fuel",
         message: `Low fuel level: ${fuel}%`,
-        level: 'medium'
+        level: "medium",
+        createdAt: new Date()
       });
     }
 
     let createdAlerts = [];
-    if (alertsToCreate.length > 0) {
-      createdAlerts = await Alert.insertMany(alertsToCreate.map(a => ({ ...a, createdAt: new Date() })));
+    if (alerts.length > 0) {
+      createdAlerts = await Alert.insertMany(alerts);
 
-      try {
-        const io = getIo();
-        if (io && createdAlerts.length > 0) {
-          for (const a of createdAlerts) {
-            io.emit('vehicle:alert', a);
-          }
-        }
-      } catch (err) { }
+      const io = getIo();
+      if (io) {
+        createdAlerts.forEach(alert => io.emit("vehicle:alert", alert));
+      }
     }
 
-    return res.status(201).json({ status: 'ok', data: { telemetry, alerts: createdAlerts } });
+    // -----------------------------------------
+    // 6️ RESPONSE
+    // -----------------------------------------
+    return res.status(200).json({
+      status: "ok",
+      data: { telemetry, alerts: createdAlerts }
+    });
+
   } catch (err) {
-    return res.status(400).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 };
 
@@ -131,7 +166,8 @@ export const getTelemetryHistory = async (req, res) => {
       if (to) filter.timestamp.$lte = new Date(to);
     }
 
-    const data = await Telemetry.find(filter).sort({ timestamp: 1 }).lean();
+    // Query from TelemetryHistory collection (not Telemetry)
+    const data = await TelemetryHistory.find(filter).sort({ timestamp: 1 }).lean();
     return res.json({ status: 'ok', data });
   } catch (err) {
     return res.status(500).json({ error: err.message });

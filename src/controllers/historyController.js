@@ -1,4 +1,4 @@
-import Telemetry from '../models/Telemetry.js';
+import TelemetryHistory from '../models/TelemetryHistory.js';
 
 /**
  * Get vehicle location history
@@ -31,8 +31,8 @@ export const getVehicleHistory = async (req, res) => {
             start.setHours(0, 0, 0, 0); // Start of day
         }
 
-        // Query telemetry data for this vehicle in the date range
-        const history = await Telemetry.find({
+        // Query telemetry history data for this vehicle in the date range
+        const history = await TelemetryHistory.find({
             vehicleId,
             timestamp: { $gte: start, $lte: end },
             'location.lat': { $exists: true },
@@ -79,7 +79,7 @@ export const getVehicleHistorySummary = async (req, res) => {
         start.setDate(start.getDate() - parseInt(days));
         start.setHours(0, 0, 0, 0);
 
-        const history = await Telemetry.find({
+        const history = await TelemetryHistory.find({
             vehicleId,
             timestamp: { $gte: start, $lte: end },
             'location.lat': { $exists: true }
