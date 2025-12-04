@@ -23,13 +23,27 @@ export const getAlerts = async (req, res) => {
 export const acknowledgeAlert = async (req, res) => {
   try {
     const { id } = req.params;
-    const updated = await Alert.findByIdAndUpdate(id, { acknowledged: true }, { new: true }).lean();
+    const { acknowledgedBy, note } = req.body;
+
+    const updated = await Alert.findByIdAndUpdate(
+      id,
+      {
+        acknowledged: true,
+        acknowledgedBy: acknowledgedBy || 'Operator', // Default if not provided
+        acknowledgedAt: new Date(),
+        acknowledgmentNote: note
+      },
+      { new: true }
+    ).lean();
+
     if (!updated) return res.status(404).json({ error: 'Alert not found' });
+
     // Emit acknowledgement event
     try {
       const io = getIo();
       if (io) {
-        io.emit('alert:acked', { alertId: updated._id, vehicleId: updated.vehicleId });
+        // Emit full updated alert so frontend can show details immediately
+        io.emit('alert:acked', updated);
       }
     } catch (err) {
       // ignore

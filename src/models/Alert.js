@@ -8,7 +8,10 @@ const AlertSchema = new Schema({
   message: { type: String },
   level: { type: String, default: 'info' },
   acknowledged: { type: Boolean, default: false },
-  createdAt: { type: Date, default: Date.now,expires: 100800 }
+  acknowledgedBy: { type: String },        // Who acknowledged
+  acknowledgedAt: { type: Date },          // When acknowledged
+  acknowledgmentNote: { type: String },    // Why/notes
+  createdAt: { type: Date, default: Date.now, expires: 100800 }
 });
 
 export default model('Alert', AlertSchema);
