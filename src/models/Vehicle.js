@@ -8,6 +8,7 @@ const VehicleSchema = new Schema({
   model: { type: String },
   driverName: { type: String },
   driverPhone: { type: String },
+  email:{type:String},
   createdAt: { type: Date, default: Date.now }
 });
 
