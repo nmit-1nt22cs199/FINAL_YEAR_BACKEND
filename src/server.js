@@ -8,6 +8,7 @@ import vehiclesRouter from './routes/vehiclesRoutes.js';
 import telemetryRouter from './routes/telemetryRoutes.js';
 import alertsRouter from './routes/alertsRoutes.js';
 import historyRouter from './routes/historyRoutes.js';
+import geofenceRouter from './routes/geofenceRoutes.js';
 import { createServer } from 'http';
 import { initSocket } from './socket.js';
 
@@ -30,6 +31,7 @@ app.use('/api/vehicles', vehiclesRouter);
 app.use('/api/telemetry', telemetryRouter);
 app.use('/api/alerts', alertsRouter);
 app.use('/api/history', historyRouter);
+app.use('/api/geofences', geofenceRouter);
 
 app.get('/', (req, res) => res.json({ status: 'ok', data: 'Fleet backend is running' }));
 

@@ -1,0 +1,113 @@
+{
+    "sampleGeofences": [
+        {
+            "name": "Main Warehouse",
+            "type": "circle",
+            "center": {
+                "lat": 28.6139,
+                "lng": 77.2090
+            },
+            "radius": 1000,
+            "color": "#3b82f6",
+            "alertOnEntry": true,
+            "alertOnExit": true,
+            "description": "Primary warehouse and distribution center"
+        },
+        {
+            "name": "Delivery Zone A",
+            "type": "circle",
+            "center": {
+                "lat": 28.7041,
+                "lng": 77.1025
+            },
+            "radius": 500,
+            "color": "#10b981",
+            "alertOnEntry": true,
+            "alertOnExit": false,
+            "description": "North Delhi delivery zone"
+        },
+        {
+            "name": "Restricted Area",
+            "type": "circle",
+            "center": {
+                "lat": 28.5355,
+                "lng": 77.3910
+            },
+            "radius": 800,
+            "color": "#ef4444",
+            "alertOnEntry": true,
+            "alertOnExit": true,
+            "description": "No entry zone - alert on any access"
+        },
+        {
+            "name": "Service Center",
+            "type": "circle",
+            "center": {
+                "lat": 28.4595,
+                "lng": 77.0266
+            },
+            "radius": 600,
+            "color": "#f59e0b",
+            "alertOnEntry": false,
+            "alertOnExit": true,
+            "description": "Vehicle maintenance and service center"
+        },
+        {
+            "name": "Customer Hub - South",
+            "type": "circle",
+            "center": {
+                "lat": 28.4817,
+                "lng": 77.0873
+            },
+            "radius": 750,
+            "color": "#8b5cf6",
+            "alertOnEntry": true,
+            "alertOnExit": true,
+            "description": "Major customer location in South Delhi"
+        }
+    ],
+    "testVehicleLocations": [
+        {
+            "vehicleId": "TEST-001",
+            "location": {
+                "lat": 28.6139,
+                "lng": 77.2090
+            },
+            "description": "Inside Main Warehouse - should trigger entry alert"
+        },
+        {
+            "vehicleId": "TEST-002",
+            "location": {
+                "lat": 28.7041,
+                "lng": 77.1025
+            },
+            "description": "Inside Delivery Zone A - should trigger entry alert"
+        },
+        {
+            "vehicleId": "TEST-003",
+            "location": {
+                "lat": 28.5355,
+                "lng": 77.3910
+            },
+            "description": "Inside Restricted Area - should trigger entry alert"
+        },
+        {
+            "vehicleId": "TEST-004",
+            "location": {
+                "lat": 28.6500,
+                "lng": 77.2500
+            },
+            "description": "Outside all geofences - no alerts"
+        }
+    ],
+    "instructions": {
+        "step1": "Start backend server: cd FINAL_YEAR_BACKEND && npm start",
+        "step2": "Start frontend: cd FINAL_YEAR_FRONTEND && npm run dev",
+        "step3": "Login to the application",
+        "step4": "Navigate to Geofences page",
+        "step5": "Click 'Create Geofence' and copy data from sampleGeofences above",
+        "step6": "Go to Live Tracking page to see geofences rendered on map",
+        "step7": "Use test scripts to emit vehicle updates with testVehicleLocations",
+        "step8": "Check Alerts page for geofence violation alerts"
+    }
+}
