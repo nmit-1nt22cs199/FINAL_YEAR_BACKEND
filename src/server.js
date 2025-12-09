@@ -22,7 +22,7 @@ const app = express();
 
 // Middleware
 app.use(helmet());
-app.use(cors({ origin: "*" }));
+app.use(cors({ origin: "https://fleet-iot.vercel.app/" }));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
