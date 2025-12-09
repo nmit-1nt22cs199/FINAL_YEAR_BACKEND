@@ -9,3 +9,5 @@ test-history-tracking.js
 test-socket.js
 create-test-geofence.js
 SOCKET_FIX.md
+test-geofence-alerts.js        
+test-geofence-http.js

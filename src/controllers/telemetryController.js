@@ -64,6 +64,16 @@ export const postTelemetry = async (req, res) => {
     console.log(`📚 History record saved for ${vehicleId}`);
 
     // -----------------------------------------
+    // 3.5 CHECK GEOFENCES (New)
+    // -----------------------------------------
+    try {
+      const { processGeofenceForVehicle } = await import('../services/geofenceService.js');
+      await processGeofenceForVehicle(vehicleId, telemetryData.location);
+    } catch (err) {
+      console.error('Error checking geofences:', err);
+    }
+
+    // -----------------------------------------
     // 4️ SEND SOCKET UPDATES
     // -----------------------------------------
     try {
