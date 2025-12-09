@@ -7,3 +7,5 @@ test_alert.js
 test_emit.js
 test-history-tracking.js
 test-socket.js
+create-test-geofence.js
+SOCKET_FIX.md

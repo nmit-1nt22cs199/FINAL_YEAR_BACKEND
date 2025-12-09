@@ -14,10 +14,17 @@ const vehicleGeofenceStates = new Map();
 export const initSocket = (server, opts = {}) => {
   if (io) return io;
 
-  // Create a new Socket.IO server
+  // Create a new Socket.IO server with Render-compatible settings
   io = new Server(server, {
     path: '/api/socket',
-    cors: { origin: '*' },
+    cors: {
+      origin: '*',
+      methods: ['GET', 'POST']
+    },
+    transports: ['polling', 'websocket'], // Polling first for Render
+    allowEIO3: true,
+    pingTimeout: 60000,
+    pingInterval: 25000,
     ...opts
   });
 
