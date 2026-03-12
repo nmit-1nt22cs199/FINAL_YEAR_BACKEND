@@ -7,6 +7,7 @@ const AlertSchema = new Schema({
   type: { type: String },
   message: { type: String },
   level: { type: String, default: 'info' },
+  metadata: { type: Schema.Types.Mixed },  // Structured context (location, sensor data, route info)
   acknowledged: { type: Boolean, default: false },
   acknowledgedBy: { type: String },        // Who acknowledged
   acknowledgedAt: { type: Date },          // When acknowledged

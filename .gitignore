@@ -11,3 +11,8 @@ create-test-geofence.js
 SOCKET_FIX.md
 test-geofence-alerts.js        
 test-geofence-http.js
+fix-assignedVehicle.js
+simulate-vehicle.js
+test-transfer-hardware.js
+test-transfer.js
+seed_users.js

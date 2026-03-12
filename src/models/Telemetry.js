@@ -12,6 +12,9 @@ const TelemetrySchema = new Schema({
   temperature: { type: Number },
   fuel: { type: Number },
   ignition: { type: Boolean },
+  doorStatus: { type: String, enum: ['open', 'closed', null], default: null },
+  vibration: { type: Number, default: 0 },
+  motion: { type: Boolean, default: false },
   timestamp: { type: Date, default: Date.now },
   extra: { type: Schema.Types.Mixed }
 });

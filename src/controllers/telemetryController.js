@@ -13,6 +13,9 @@ export const postTelemetry = async (req, res) => {
       temperature,
       fuel,
       ignition,
+      doorStatus,
+      vibration,
+      motion,
       timestamp,
       extra
     } = req.body;
@@ -45,6 +48,9 @@ export const postTelemetry = async (req, res) => {
       temperature,
       fuel,
       ignition,
+      doorStatus: doorStatus || null,
+      vibration: vibration || 0,
+      motion: motion || false,
       timestamp: timestamp ? new Date(timestamp) : new Date(),
       extra
     };
@@ -71,6 +77,16 @@ export const postTelemetry = async (req, res) => {
       await processGeofenceForVehicle(vehicleId, telemetryData.location);
     } catch (err) {
       console.error('Error checking geofences:', err);
+    }
+
+    // -----------------------------------------
+    // 3.6 CHECK ANOMALIES (Sensor Monitoring)
+    // -----------------------------------------
+    try {
+      const { processTelemetryAnomalies } = await import('../services/anomalyService.js');
+      await processTelemetryAnomalies(vehicleId, telemetryData);
+    } catch (err) {
+      console.error('Error checking anomalies:', err);
     }
 
     // -----------------------------------------

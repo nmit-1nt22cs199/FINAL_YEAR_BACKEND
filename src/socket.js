@@ -55,6 +55,14 @@ export const initSocket = (server, opts = {}) => {
         } catch (error) {
           console.error('[socket] Error processing geofence:', error);
         }
+
+        // Anomaly detection for sensor data
+        try {
+          const { processTelemetryAnomalies } = await import('./services/anomalyService.js');
+          await processTelemetryAnomalies(vehicleId, data);
+        } catch (error) {
+          console.error('[socket] Error processing anomalies:', error);
+        }
       }
 
       io.emit('vehicle_update', data);
@@ -64,6 +72,30 @@ export const initSocket = (server, opts = {}) => {
     socket.on('alert_triggered', (data) => {
       console.log(`[socket] broadcasting alert_triggered for ${data.vehicleId}`);
       io.emit('alert_triggered', data);
+    });
+
+    // Transfer-related events
+    socket.on('transfer_status', (data) => {
+      console.log(`[socket] broadcasting transfer_status for session ${data.sessionId}`);
+      io.emit('transfer_status', data);
+    });
+
+    // Listen for transfer initiated events (emitted from controller)
+    socket.on('transfer_initiated', (data) => {
+      console.log(`[socket] broadcasting transfer_initiated for vehicle ${data.vehicleId}`);
+      io.emit('transfer_initiated', data);
+    });
+
+    // Listen for transfer verified events (emitted from controller)
+    socket.on('transfer_verified', (data) => {
+      console.log(`[socket] broadcasting transfer_verified for session ${data.sessionId}`);
+      io.emit('transfer_verified', data);
+    });
+
+    // Listen for unlock events (emitted from controller to IoT device)
+    socket.on('unlock', (data) => {
+      console.log(`[socket] broadcasting unlock for vehicle ${data.vehicleId}`);
+      io.emit('unlock', data);
     });
   });
 
