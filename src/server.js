@@ -12,6 +12,7 @@ import geofenceRouter from './routes/geofenceRoutes.js';
 import userRouter from './routes/userRoutes.js';
 import transferRouter from './routes/transferRoutes.js';
 import routeRouter from './routes/routeRoutes.js';
+import vehicleStatusRouter from './routes/vehicleStatusRoutes.js';
 import { createServer } from 'http';
 import { initSocket } from './socket.js';
 
@@ -38,6 +39,7 @@ app.use('/api/geofences', geofenceRouter);
 app.use('/api/users', userRouter);
 app.use('/api/transfer', transferRouter);
 app.use('/api/routes', routeRouter);
+app.use('/api/vehicle', vehicleStatusRouter);
 
 app.get('/', (req, res) => res.json({ status: 'ok', data: 'Fleet backend is running' }));
 
