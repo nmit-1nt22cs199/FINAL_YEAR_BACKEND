@@ -16,3 +16,4 @@ simulate-vehicle.js
 test-transfer-hardware.js
 test-transfer.js
 seed_users.js
+simulate-iot.js
