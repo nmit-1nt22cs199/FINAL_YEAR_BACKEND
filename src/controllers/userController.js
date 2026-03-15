@@ -119,6 +119,11 @@ export const assignUserToVehicle = async (req, res) => {
     try {
         const { userId, vehicleId } = req.body;
 
+        // Ensure only admin can assign
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Only administrators can assign vehicles' });
+        }
+
         if (!userId || !vehicleId) {
             return res.status(400).json({ error: 'userId and vehicleId are required' });
         }
@@ -133,6 +138,18 @@ export const assignUserToVehicle = async (req, res) => {
         }
         if (!vehicle) {
             return res.status(404).json({ error: 'Vehicle not found' });
+        }
+
+        // Check if vehicle is already assigned to another user
+        const alreadyAssigned = await User.findOne({ 
+            assignedVehicle: vehicle._id,
+            _id: { $ne: userId }
+        });
+        
+        if (alreadyAssigned) {
+            return res.status(400).json({ 
+                error: `Vehicle ${vehicle.vehicleId} is already assigned to user ${alreadyAssigned.name}` 
+            });
         }
 
         // Update user
@@ -162,6 +179,10 @@ export const assignUserToVehicle = async (req, res) => {
  */
 export const unassignUser = async (req, res) => {
     try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Only administrators can unassign vehicles' });
+        }
+
         const user = await User.findByIdAndUpdate(
             req.params.id,
             { assignedVehicle: null, updatedAt: Date.now() },

@@ -143,9 +143,13 @@ export const verifyTransfer = async (req, res) => {
             });
         }
 
-        // Verify user is the receiver or admin
-        if (session.receiverId?.toString() !== userId && req.user.role !== 'admin') {
-            return res.status(403).json({ error: 'Only the assigned receiver can verify this transfer' });
+        // Verify user is the receiver (strictly, as per request)
+        if (session.receiverId?.toString() !== userId) {
+            if (req.user.role === 'admin') {
+                console.log('[Transfer] Admin override for verification');
+            } else {
+                return res.status(403).json({ error: 'Only the assigned receiver can verify this transfer. Senders are not allowed to verify.' });
+            }
         }
 
         // Compare keys (normalize input)
