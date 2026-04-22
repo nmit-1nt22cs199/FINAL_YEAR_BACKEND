@@ -51,6 +51,14 @@ const TransferSessionSchema = new Schema({
         type: Number,
         default: null
     },
+    keyDisclosed: {
+        type: Boolean,
+        default: false
+    },
+    temporaryKey: {
+        type: String,
+        default: null
+    },
     createdAt: {
         type: Date,
         default: Date.now

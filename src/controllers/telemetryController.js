@@ -3,6 +3,8 @@ import TelemetryHistory from '../models/TelemetryHistory.js';
 import Alert from '../models/Alert.js';
 import Vehicle from '../models/Vehicle.js';
 import { getIo } from '../socket.js';
+import { processProximityForTransfer } from '../services/transferProximityService.js';
+
 
 export const postTelemetry = async (req, res) => {
   try {
@@ -87,6 +89,15 @@ export const postTelemetry = async (req, res) => {
       await processTelemetryAnomalies(vehicleId, telemetryData);
     } catch (err) {
       console.error('Error checking anomalies:', err);
+    }
+
+    // -----------------------------------------
+    // 3.7 CHECK TRANSFER PROXIMITY (Arrival PIN Disclosure)
+    // -----------------------------------------
+    try {
+      await processProximityForTransfer(vehicleId, telemetryData.location);
+    } catch (err) {
+      console.error('Error checking transfer proximity:', err);
     }
 
     // -----------------------------------------

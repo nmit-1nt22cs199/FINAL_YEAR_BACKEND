@@ -56,12 +56,12 @@ export const initSocket = (server, opts = {}) => {
           console.error('[socket] Error processing geofence:', error);
         }
 
-        // Anomaly detection for sensor data
+        // Proximity detection for transfer handoffs
         try {
-          const { processTelemetryAnomalies } = await import('./services/anomalyService.js');
-          await processTelemetryAnomalies(vehicleId, data);
+          const { processProximityForTransfer } = await import('./services/transferProximityService.js');
+          await processProximityForTransfer(vehicleId, data.location);
         } catch (error) {
-          console.error('[socket] Error processing anomalies:', error);
+          console.error('[socket] Error processing transfer proximity:', error);
         }
       }
 

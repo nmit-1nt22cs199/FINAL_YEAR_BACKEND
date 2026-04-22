@@ -17,3 +17,4 @@ test-transfer-hardware.js
 test-transfer.js
 seed_users.js
 simulate-iot.js
+verify-pin-disclosure.js

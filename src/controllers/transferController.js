@@ -3,9 +3,12 @@ import User from '../models/User.js';
 import Vehicle from '../models/Vehicle.js';
 import Telemetry from '../models/Telemetry.js';
 import TelemetryHistory from '../models/TelemetryHistory.js';
+import Notification from '../models/Notification.js';
 import { generateKey, hashKey, compareKeys } from '../utils/keyGenerator.js';
 import { logAction } from '../utils/auditLogger.js';
 import { getIo } from '../socket.js';
+import { getDistanceFromLatLonInMeters } from '../utils/geoUtils.js';
+import * as routeService from '../services/routeService.js';
 
 /**
  * Initiate a new transfer session
@@ -53,6 +56,16 @@ export const initiateTransfer = async (req, res) => {
                 sessionId: existingSession._id
             });
         }
+        
+        // --- NEW REQUIREMENT: ACTIVE ROUTE CHECK ---
+        const activeRoute = await routeService.getActiveRoute(vehicle.vehicleId);
+        if (!activeRoute) {
+            return res.status(400).json({
+                error: 'Route Required',
+                message: 'No active safe route found for this vehicle. please Assign a route before initiating a transfer.'
+            });
+        }
+        // ----------------------------------------
 
         // Generate sender key
         const senderKey = generateKey();
@@ -64,6 +77,7 @@ export const initiateTransfer = async (req, res) => {
             senderId,
             receiverId,
             senderKey: hashedSenderKey,
+            temporaryKey: senderKey, // Store plain key for automated arrival notification
             status: 'in-progress',
             notes,
             amount
@@ -90,6 +104,34 @@ export const initiateTransfer = async (req, res) => {
                 receiverId,
                 status: 'in-progress'
             });
+        }
+
+        // Create Automated Notification for Receiver
+        try {
+            const notification = new Notification({
+                userId: receiverId,
+                title: 'New Vehicle Transfer',
+                message: `You have been assigned as the receiver for vehicle ${vehicle.registrationNumber || vehicleId}. Use the key below when at the destination.`,
+                type: 'transfer',
+                data: {
+                    sessionId: session._id,
+                    vehicleId: vehicleId,
+                    vehicleReg: vehicle.registrationNumber,
+                    // keyDisclosed: false // Key is hidden until arrival
+                }
+            });
+            await notification.save();
+
+            // Emit notification to specific user
+            if (io) {
+                io.emit('notification', {
+                    userId: receiverId.toString(), // Ensure string for frontend comparison
+                    title: notification.title,
+                    message: notification.message
+                });
+            }
+        } catch (notificationErr) {
+            console.error('[Transfer] Notification creation failed:', notificationErr);
         }
 
         // Return session with plain sender key (only time it's visible)
@@ -122,12 +164,12 @@ export const initiateTransfer = async (req, res) => {
  */
 export const verifyTransfer = async (req, res) => {
     try {
-        const { sessionId, receiverKey } = req.body;
+        const { sessionId, receiverKey, password } = req.body;
         const userId = req.user._id?.toString();
 
         // Validate required fields
-        if (!sessionId || !receiverKey) {
-            return res.status(400).json({ error: 'sessionId and receiverKey are required' });
+        if (!sessionId || !receiverKey || !password) {
+            return res.status(400).json({ error: 'sessionId, receiverKey, and password are required' });
         }
 
         // Get session
@@ -143,6 +185,19 @@ export const verifyTransfer = async (req, res) => {
             });
         }
 
+        // --- STEP 0: PASSWORD VERIFICATION ---
+        try {
+            const currentUser = await User.findById(req.user._id);
+            if (!currentUser) throw new Error('User not found');
+            const isPasswordMatch = await currentUser.comparePassword(password);
+            if (!isPasswordMatch) {
+                return res.status(401).json({ error: 'Invalid password', message: 'The confirmation password you entered is incorrect.' });
+            }
+        } catch (pwErr) {
+            return res.status(500).json({ error: 'Internal identity check error' });
+        }
+        // -------------------------------------
+
         // Verify user is the receiver (strictly, as per request)
         if (session.receiverId?.toString() !== userId) {
             if (req.user.role === 'admin') {
@@ -157,6 +212,52 @@ export const verifyTransfer = async (req, res) => {
         if (normalizedKey.length !== 6) {
             return res.status(400).json({ error: 'Receiver key must be 6 digits' });
         }
+
+        // PROXIMITY CHECK (100 Meters)
+        try {
+            const vehicle = await Vehicle.findById(session.vehicleId);
+            if (!vehicle) throw new Error('Vehicle not found related to this session');
+
+            // 1. Get Active Route for this vehicle to find destination
+            const activeRoute = await routeService.getActiveRoute(vehicle.vehicleId);
+            if (!activeRoute || !activeRoute.destination) {
+                return res.status(403).json({ 
+                    error: 'Location verification failed', 
+                    message: 'No active route or destination found for this vehicle. Secure handoff requires a defined destination.'
+                });
+            }
+
+            // 2. Get Latest Telemetry for vehicle
+            const latestTelemetry = await Telemetry.findOne({ vehicleId: vehicle.vehicleId }).sort({ timestamp: -1 });
+            if (!latestTelemetry || !latestTelemetry.location) {
+                return res.status(403).json({ 
+                    error: 'Location verification failed', 
+                    message: 'No recent telemetry data available for vehicle. Unable to verify proximity.'
+                });
+            }
+
+            // 3. Calculate Distance
+            const distance = getDistanceFromLatLonInMeters(
+                latestTelemetry.location.lat,
+                latestTelemetry.location.lng,
+                activeRoute.destination.lat,
+                activeRoute.destination.lng
+            );
+
+            const ALLOWED_RADIUS = 100; // 100 Meters
+            if (distance > ALLOWED_RADIUS) {
+                return res.status(403).json({ 
+                    error: 'Proximity Check Failed', 
+                    message: `Vehicle is currently ${Math.round(distance)}m away from the authorized destination. Verification is only allowed within ${ALLOWED_RADIUS}m.`,
+                    distance: Math.round(distance)
+                });
+            }
+            console.log(`[Transfer] Proximity Verified: ${Math.round(distance)}m`);
+        } catch (proximityErr) {
+            console.error('[Transfer] Proximity check error:', proximityErr);
+            return res.status(500).json({ error: 'Proximity verification system error: ' + proximityErr.message });
+        }
+
         const isMatch = await compareKeys(normalizedKey, session.senderKey);
         console.log(`[Transfer] verify key attempt session=${sessionId} receiver=${session.receiverId} key=**${normalizedKey.slice(-2)} match=${isMatch}`);
 
@@ -182,6 +283,19 @@ export const verifyTransfer = async (req, res) => {
         session.endTime = new Date();
         session.receiverKey = await hashKey(receiverKey);
         await session.save();
+
+        // --- AUTOMATIC ROUTE COMPLETION ---
+        try {
+            const vehicle = await Vehicle.findById(session.vehicleId);
+            const activeRoute = await routeService.getActiveRoute(vehicle.vehicleId);
+            if (activeRoute) {
+                await routeService.completeRoute(activeRoute._id);
+                console.log(`[Transfer] Automatically completed route ${activeRoute._id} on transfer success`);
+            }
+        } catch (routeErr) {
+            console.error('[Transfer] Failed to auto-complete route:', routeErr);
+        }
+        // ----------------------------------
 
         // Log successful verification
         await logAction(
